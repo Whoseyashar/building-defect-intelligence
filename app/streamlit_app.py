@@ -17,11 +17,61 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.severity-CRITICAL{background:#dc3545;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
-.severity-HIGH{background:#e67e22;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
-.severity-MEDIUM{background:#f39c12;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
-.severity-LOW{background:#27ae60;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
-.summary-box{background:#f0f4ff;border-left:4px solid #1e3c72;padding:16px;border-radius:4px;margin:12px 0;}
+/* Global */
+[data-testid="stAppViewContainer"] { background: #f4f6fa; }
+[data-testid="stSidebar"] { background: #1e3c72 !important; }
+[data-testid="stSidebar"] * { color: white !important; }
+[data-testid="stSidebar"] .stRadio label { 
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin: 4px 0;
+    display: block;
+    transition: background 0.2s;
+}
+[data-testid="stSidebar"] .stRadio label:hover { background: rgba(255,255,255,0.18); }
+
+/* Severity badges */
+.badge-CRITICAL{background:#dc3545;color:white;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px;letter-spacing:1px;}
+.badge-HIGH{background:#e67e22;color:white;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px;letter-spacing:1px;}
+.badge-MEDIUM{background:#f39c12;color:white;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px;letter-spacing:1px;}
+.badge-LOW{background:#27ae60;color:white;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px;letter-spacing:1px;}
+
+/* KPI cards */
+.kpi-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border-left: 4px solid #1e3c72;
+    margin-bottom: 8px;
+}
+.kpi-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.kpi-value { font-size: 36px; font-weight: 800; color: #1e3c72; line-height: 1; }
+.kpi-card.critical { border-left-color: #dc3545; }
+.kpi-card.critical .kpi-value { color: #dc3545; }
+.kpi-card.high { border-left-color: #e67e22; }
+.kpi-card.high .kpi-value { color: #e67e22; }
+
+/* Summary box */
+.summary-box {
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+    border-left: 4px solid #1e3c72;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 16px 0;
+}
+
+/* Page header */
+.page-header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+.page-header h1 { color: white; margin: 0; font-size: 28px; }
+.page-header p { color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -32,7 +82,7 @@ def get_conn():
 
 def badge(severity):
     s = severity.upper()
-    return f'<span class="severity-{s}">{s}</span>'
+    return f'<span class="badge-{s}">{s}</span>'
 
 def analyze_with_ai(text):
     api_key = os.environ.get("OPENAI_API_KEY","")
@@ -87,14 +137,91 @@ def save_to_db(result):
     conn.commit()
     conn.close()
 
-st.sidebar.title("🏗️ Building Defect Intelligence")
-st.sidebar.caption("SECO Group — AI-powered inspection analysis")
-st.sidebar.divider()
-page = st.sidebar.radio("Navigation", ["Dashboard", "Analyze Report", "Defect Database", "About"])
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+st.sidebar.markdown("""
+<div style="text-align:center; padding: 24px 0 16px;">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Building base -->
+      <rect x="10" y="24" width="44" height="34" rx="2" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+      <!-- Windows row 1 -->
+      <rect x="16" y="30" width="8" height="7" rx="1" fill="rgba(255,255,255,0.6)"/>
+      <rect x="28" y="30" width="8" height="7" rx="1" fill="rgba(255,200,100,0.9)"/>
+      <rect x="40" y="30" width="8" height="7" rx="1" fill="rgba(255,255,255,0.6)"/>
+      <!-- Windows row 2 -->
+      <rect x="16" y="42" width="8" height="7" rx="1" fill="rgba(255,200,100,0.9)"/>
+      <rect x="28" y="42" width="8" height="7" rx="1" fill="rgba(255,255,255,0.6)"/>
+      <rect x="40" y="42" width="8" height="7" rx="1" fill="rgba(255,200,100,0.9)"/>
+      <!-- Door -->
+      <rect x="26" y="50" width="12" height="8" rx="1" fill="rgba(255,255,255,0.3)"/>
+      <!-- Roof -->
+      <polygon points="32,6 8,26 56,26" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linejoin="round"/>
+      <!-- Magnifier overlay -->
+      <circle cx="46" cy="18" r="10" fill="rgba(30,60,114,0.85)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+      <circle cx="46" cy="18" r="6" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+      <line x1="50.2" y1="22.2" x2="54" y2="26" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <div style="font-size:12px; font-weight:300; letter-spacing:3px; opacity:0.65; text-transform:uppercase; margin-top:10px;">SECO Group</div>
+    <div style="font-size:20px; font-weight:800; letter-spacing:0.5px; margin-top:2px;">Building Defect</div>
+    <div style="font-size:20px; font-weight:800; letter-spacing:0.5px;">Intelligence</div>
+    <div style="width:40px; height:2px; background:rgba(255,255,255,0.35); margin:10px auto 0; border-radius:2px;"></div>
+</div>
+""", unsafe_allow_html=True)
 
+st.sidebar.markdown("""
+<style>
+div[data-testid="stSidebar"] .stRadio > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+div[data-testid="stSidebar"] .stRadio > div > label {
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 8px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.3px !important;
+    transition: all 0.2s !important;
+    cursor: pointer !important;
+}
+div[data-testid="stSidebar"] .stRadio > div > label:hover {
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.3) !important;
+}
+div[data-testid="stSidebar"] .stRadio > div > label[data-selected="true"] {
+    background: rgba(255,255,255,0.2) !important;
+    border-color: rgba(255,255,255,0.5) !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+page = st.sidebar.radio("", [
+    "📊  Dashboard",
+    "🔍  Analyze Report", 
+    "🗄️  Defect Database",
+    "ℹ️  About"
+])
+page = page.split("  ")[1]
+
+st.sidebar.markdown("""
+<hr style="border-color:rgba(255,255,255,0.15); margin:24px 0 12px;">
+<div style="font-size:11px; opacity:0.5; text-align:center; line-height:1.8;">
+    AI & Data Engineer Assessment<br>June 2026
+</div>
+""", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD
+# ══════════════════════════════════════════════════════════════════════════════
 if page == "Dashboard":
-    st.title("Building Defect Intelligence Dashboard")
-    st.caption("Real-time overview of all inspected buildings and detected defects")
+    st.markdown("""
+    <div class="page-header">
+        <h1>🏗️ Building Defect Intelligence</h1>
+        <p>Real-time overview of all inspected buildings and detected defects — powered by AI</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     conn = get_conn()
     total_reports  = conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
@@ -114,63 +241,104 @@ if page == "Dashboard":
     """).fetchall()
     conn.close()
 
+    # KPI Cards
     c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Reports Analyzed", total_reports)
-    c2.metric("Total Defects", total_defects)
-    c3.metric("Critical", critical_count)
-    c4.metric("High Risk", high_count)
+    with c1:
+        st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">📁 Reports Analyzed</div>
+            <div class="kpi-value">{total_reports}</div>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">⚠️ Total Defects</div>
+            <div class="kpi-value">{total_defects}</div>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="kpi-card critical">
+            <div class="kpi-label">🔴 Critical</div>
+            <div class="kpi-value">{critical_count}</div>
+        </div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""<div class="kpi-card high">
+            <div class="kpi-label">🟠 High Risk</div>
+            <div class="kpi-value">{high_count}</div>
+        </div>""", unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-
     with col1:
-        st.subheader("Defects by Severity")
+        st.markdown("#### Defects by Severity")
         if severity_data:
             labels = [r[0] for r in severity_data]
             values = [r[1] for r in severity_data]
             colors_map = {"CRITICAL":"#dc3545","HIGH":"#e67e22","MEDIUM":"#f39c12","LOW":"#27ae60"}
             bar_colors = [colors_map.get(l,"#999") for l in labels]
-            fig, ax = plt.subplots(figsize=(5,3))
-            bars = ax.bar(labels, values, color=bar_colors, edgecolor="white")
-            ax.set_ylabel("Number of defects")
+            fig, ax = plt.subplots(figsize=(5,3.2))
+            bars = ax.bar(labels, values, color=bar_colors, edgecolor="white",
+                         linewidth=1.5, width=0.55, zorder=3)
+            ax.set_ylabel("Number of defects", fontsize=10, color="#6c757d")
             ax.set_facecolor("#f8f9fa")
             fig.patch.set_facecolor("#f8f9fa")
+            ax.yaxis.grid(True, color="white", linewidth=1.5, zorder=0)
+            ax.set_axisbelow(True)
             for bar, val in zip(bars, values):
                 ax.text(bar.get_x()+bar.get_width()/2, bar.get_height()+0.05,
-                        str(val), ha="center", va="bottom", fontweight="bold")
+                        str(val), ha="center", va="bottom",
+                        fontweight="bold", fontsize=12, color="#333")
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+            ax.tick_params(colors="#6c757d")
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
 
     with col2:
-        st.subheader("Reports by Source Type")
+        st.markdown("#### Reports by Source Type")
         if source_data:
             labels = [r[0].replace("_"," ").title() for r in source_data]
             values = [r[1] for r in source_data]
-            fig, ax = plt.subplots(figsize=(5,3))
-            ax.pie(values, labels=labels, autopct="%1.0f%%",
-                   colors=["#1e3c72","#4a90d9","#82b4e8"],
-                   startangle=90, textprops={"fontsize":11})
+            fig, ax = plt.subplots(figsize=(5,3.2))
+            wedges, texts, autotexts = ax.pie(
+                values, labels=labels, autopct="%1.0f%%",
+                colors=["#1e3c72","#4a90d9","#82b4e8"],
+                startangle=90,
+                wedgeprops={"edgecolor":"white","linewidth":2},
+                textprops={"fontsize":11}
+            )
+            for at in autotexts:
+                at.set_fontweight("bold")
+                at.set_color("white")
             fig.patch.set_facecolor("#f8f9fa")
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
 
-    st.divider()
-    st.subheader("All Defects — sorted by severity")
+    st.markdown("---")
+    st.markdown("#### All Defects — sorted by severity")
+    severity_icons = {"CRITICAL":"🔴","HIGH":"🟠","MEDIUM":"🟡","LOW":"🟢"}
     for severity, title, description, recommendation, filename, location in recent_defects:
-        with st.expander(f"{title} — {filename}"):
+        icon = severity_icons.get(severity, "⚪")
+        with st.expander(f"{icon} {title} — {filename}"):
             st.markdown(badge(severity), unsafe_allow_html=True)
-            st.write(f"**Location:** {location or 'N/A'}")
-            st.write(f"**Found:** {description}")
+            st.markdown(f"**📍 Location:** {location or 'N/A'}")
+            st.markdown(f"**🔍 Found:** {description}")
             if recommendation:
-                st.write(f"**Recommendation:** {recommendation}")
+                st.markdown(f"**Recommendation:** {recommendation}")
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYZE REPORT
+# ══════════════════════════════════════════════════════════════════════════════
 elif page == "Analyze Report":
-    st.title("Analyze Inspection Report")
-    st.write("Upload a PDF or paste text to get an instant AI-powered defect analysis.")
-    tab1, tab2 = st.tabs(["Upload PDF", "Paste Text"])
+    st.markdown("""
+    <div class="page-header">
+        <h1>🔍 Analyze Inspection Report</h1>
+        <p>Upload a PDF or paste text to get an instant AI-powered defect analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["📄 Upload PDF", "📝 Paste Text"])
     with tab1:
         uploaded = st.file_uploader("Upload inspection report (PDF)", type="pdf")
         if uploaded:
@@ -182,53 +350,76 @@ elif page == "Analyze Report":
             text = "".join(p.get_text() for p in doc)
             doc.close()
             st.success(f"Extracted {len(text):,} characters from PDF")
-            if st.button("Analyze with AI", key="btn_pdf"):
+            if st.button("🤖 Analyze with AI", key="btn_pdf", type="primary"):
                 with st.spinner("AI is reading the report..."):
                     result = analyze_with_ai(text)
                 if result:
                     st.session_state["result"] = result
     with tab2:
-        st.info("Tip: paste any building inspection report text below to see the AI extract defects instantly.")
-        pasted = st.text_area("Paste report text here", height=250)
-        if st.button("Analyze with AI", key="btn_text") and pasted.strip():
+        st.info("💡 Paste any building inspection report text below to see the AI extract defects instantly.")
+        pasted = st.text_area("Paste report text here", height=250,
+            placeholder="Paste inspection report content here...")
+        if st.button("🤖 Analyze with AI", key="btn_text", type="primary") and pasted.strip():
             with st.spinner("AI is reading the report..."):
                 result = analyze_with_ai(pasted)
             if result:
                 st.session_state["result"] = result
+
     if "result" in st.session_state:
         result = st.session_state["result"]
-        st.divider()
+        st.markdown("---")
         col1, col2 = st.columns([2,1])
         with col1:
-            st.subheader(result.get("building_name","Unknown Building"))
-            st.write(f"**Location:** {result.get('location','N/A')}")
-            st.write(f"**Inspector:** {result.get('inspector','N/A')}")
-            st.write(f"**Date:** {result.get('date','N/A')}")
+            st.markdown(f"### 🏢 {result.get('building_name','Unknown Building')}")
+            st.markdown(f"📍 **Location:** {result.get('location','N/A')}")
+            st.markdown(f"👤 **Inspector:** {result.get('inspector','N/A')}")
+            st.markdown(f"📅 **Date:** {result.get('date','N/A')}")
         with col2:
             risk = result.get("overall_risk","LOW")
-            st.markdown("**Overall Risk**")
+            st.markdown("**Overall Risk Level**")
             st.markdown(badge(risk), unsafe_allow_html=True)
-        st.markdown(f'<div class="summary-box">📋 <b>Executive Summary</b><br><br>{result.get("executive_summary","")}</div>', unsafe_allow_html=True)
-        st.subheader(f"Defects Found: {len(result.get('defects',[]))}")
-        for i, defect in enumerate(result.get("defects",[]), 1):
-            with st.expander(f"{i}. {defect['title']}"):
-                st.markdown(badge(defect["severity"]), unsafe_allow_html=True)
-                st.write(f"**Found:** {defect['description']}")
-                st.write(f"**Recommendation:** {defect['recommendation']}")
-                st.write(f"**Urgency:** {defect['urgency']}")
-        if st.button("Save to Database"):
-            save_to_db(result)
-            st.success("Saved to database!")
-            del st.session_state["result"]
 
+        st.markdown(
+            f'<div class="summary-box">📋 <b>Executive Summary</b><br><br>{result.get("executive_summary","")}</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(f"### Found {len(result.get('defects',[]))} Defects")
+        severity_icons = {"CRITICAL":"🔴","HIGH":"🟠","MEDIUM":"🟡","LOW":"🟢"}
+        for i, defect in enumerate(result.get("defects",[]), 1):
+            icon = severity_icons.get(defect["severity"],"⚪")
+            with st.expander(f"{icon} {i}. {defect['title']}"):
+                st.markdown(badge(defect["severity"]), unsafe_allow_html=True)
+                st.markdown(f"**🔍 Found:** {defect['description']}")
+                st.markdown(f"**Recommendation:** {defect['recommendation']}")
+                st.markdown(f"**⏰ Urgency:** {defect['urgency']}")
+
+        col1, col2 = st.columns([1,4])
+        with col1:
+            if st.button("💾 Save to Database", type="primary"):
+                save_to_db(result)
+                st.success("Saved to database!")
+                del st.session_state["result"]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DEFECT DATABASE
+# ══════════════════════════════════════════════════════════════════════════════
 elif page == "Defect Database":
-    st.title("Defect Database")
-    st.write("All defects extracted from inspected buildings, searchable and filterable.")
+    st.markdown("""
+    <div class="page-header">
+        <h1>🗄️ Defect Database</h1>
+        <p>All defects extracted from inspected buildings — searchable and filterable</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
-        severity_filter = st.selectbox("Filter by severity", ["ALL","CRITICAL","HIGH","MEDIUM","LOW"])
+        severity_filter = st.selectbox("🔍 Filter by severity",
+                                        ["ALL","CRITICAL","HIGH","MEDIUM","LOW"])
     with col2:
-        search = st.text_input("Search defects", placeholder="e.g. crack, water, fire, asbestos...")
+        search = st.text_input("🔎 Search defects",
+                                placeholder="e.g. crack, water, fire, asbestos...")
+
     conn = get_conn()
     rows = conn.execute("""
         SELECT d.severity, d.title, d.description, d.recommendation,
@@ -237,48 +428,72 @@ elif page == "Defect Database":
         ORDER BY CASE d.severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 ELSE 4 END
     """).fetchall()
     conn.close()
+
     filtered = [r for r in rows if
                 (severity_filter=="ALL" or r[0]==severity_filter) and
                 (not search or search.lower() in (r[1]+r[2]).lower())]
-    st.write(f"Showing {len(filtered)} defects")
+
+    severity_icons = {"CRITICAL":"🔴","HIGH":"🟠","MEDIUM":"🟡","LOW":"🟢"}
+    st.markdown(f"**Showing {len(filtered)} defects**")
     for severity, title, description, recommendation, urgency, filename, location in filtered:
-        with st.expander(f"[{severity}] {title} — {filename}"):
+        icon = severity_icons.get(severity,"⚪")
+        with st.expander(f"{icon} [{severity}] {title} — {filename}"):
             st.markdown(badge(severity), unsafe_allow_html=True)
-            st.write(f"**Location:** {location or 'N/A'}")
-            st.write(f"**Description:** {description}")
+            st.markdown(f"**📍 Location:** {location or 'N/A'}")
+            st.markdown(f"**🔍 Description:** {description}")
             if recommendation:
-                st.write(f"**Recommendation:** {recommendation}")
+                st.markdown(f"**Recommendation:** {recommendation}")
             if urgency:
-                st.write(f"**Urgency:** {urgency}")
+                st.markdown(f"**⏰ Urgency:** {urgency}")
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ABOUT
+# ══════════════════════════════════════════════════════════════════════════════
 elif page == "About":
-    st.title("About This Product")
     st.markdown("""
-## Building Defect Intelligence
-Built for **SECO Group** as part of the AI and Data Engineer technical assessment.
+    <div class="page-header">
+        <h1>ℹ️ About This Product</h1>
+        <p>Building Defect Intelligence — SECO AI & Data Engineer Assessment</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-### Problem
-Building inspectors process dozens of PDF reports weekly. Defects are buried in
-unstructured prose, severity is implied rather than structured, and there is no
-connection to similar past cases.
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+### 🎯 Problem
+Building inspectors process dozens of PDF reports weekly.
+Defects are buried in unstructured prose, severity is implied
+rather than structured, and there is no connection to similar
+past cases. The result is slow triage and inconsistent assessment.
 
-### Solution
+### 💡 Solution
 This tool automatically:
-- Extracts text from any PDF inspection report using PyMuPDF
-- Uses AI (GPT-4o-mini) to identify and classify every defect
+- Extracts text from any PDF inspection report
+- Uses AI to identify and classify every defect
 - Scores severity: Critical / High / Medium / Low
 - Generates actionable recommendations per defect
-- Produces an executive summary for non-technical stakeholders
-- Stores all findings in a searchable SQLite database
-- Finds similar past cases using ChromaDB vector search (RAG)
-
-### Tech Stack
+- Produces executive summaries for non-technical stakeholders
+- Stores all findings in a searchable database
+- Finds similar past cases using RAG vector search
+        """)
+    with col2:
+        st.markdown("""
+### 🛠️ Tech Stack
 | Component | Technology |
-|-----------|-----------|
+|-----------|------------|
 | PDF parsing | PyMuPDF |
 | AI extraction | OpenAI GPT-4o-mini |
 | Embeddings | sentence-transformers |
 | Vector search | ChromaDB |
 | Database | SQLite |
 | UI | Streamlit |
-    """)
+
+### 📊 Data Sources
+| Source | Type | Pages |
+|--------|------|-------|
+| CDC NIOSH Report | Real public | 28 |
+| NRC Inspection | Real public | 206 |
+| OSHA Safety | Real public | 60 |
+| Luxembourg Residential | Synthetic | 1 |
+| Luxembourg Industrial | Synthetic | 1 |
+        """)
