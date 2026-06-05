@@ -3,6 +3,9 @@ import streamlit as st
 import sqlite3
 import json
 import os
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from openai import OpenAI
 import fitz
 
@@ -14,11 +17,11 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.severity-CRITICAL { background:#dc3545; color:white; padding:3px 10px; border-radius:4px; font-weight:bold; font-size:12px; }
-.severity-HIGH     { background:#e67e22; color:white; padding:3px 10px; border-radius:4px; font-weight:bold; font-size:12px; }
-.severity-MEDIUM   { background:#f39c12; color:white; padding:3px 10px; border-radius:4px; font-weight:bold; font-size:12px; }
-.severity-LOW      { background:#27ae60; color:white; padding:3px 10px; border-radius:4px; font-weight:bold; font-size:12px; }
-.summary-box { background:#f0f4ff; border-left:4px solid #1e3c72; padding:16px; border-radius:4px; margin:12px 0; }
+.severity-CRITICAL{background:#dc3545;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
+.severity-HIGH{background:#e67e22;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
+.severity-MEDIUM{background:#f39c12;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
+.severity-LOW{background:#27ae60;color:white;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:12px;}
+.summary-box{background:#f0f4ff;border-left:4px solid #1e3c72;padding:16px;border-radius:4px;margin:12px 0;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,19 +95,17 @@ page = st.sidebar.radio("Navigation", ["Dashboard", "Analyze Report", "Defect Da
 if page == "Dashboard":
     st.title("Building Defect Intelligence Dashboard")
     st.caption("Real-time overview of all inspected buildings and detected defects")
+
     conn = get_conn()
     total_reports  = conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
     total_defects  = conn.execute("SELECT COUNT(*) FROM defects").fetchone()[0]
     critical_count = conn.execute("SELECT COUNT(*) FROM defects WHERE severity='CRITICAL'").fetchone()[0]
     high_count     = conn.execute("SELECT COUNT(*) FROM defects WHERE severity='HIGH'").fetchone()[0]
-    conn.close()
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Reports Analyzed", total_reports)
-    c2.metric("Total Defects", total_defects)
-    c3.metric("Critical", critical_count)
-    c4.metric("High Risk", high_count)
-    st.divider()
-    conn = get_conn()
+    severity_data  = conn.execute("""
+        SELECT severity, COUNT(*) FROM defects GROUP BY severity
+        ORDER BY CASE severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 ELSE 4 END
+    """).fetchall()
+    source_data = conn.execute("SELECT source_type, COUNT(*) FROM reports GROUP BY source_type").fetchall()
     recent_defects = conn.execute("""
         SELECT d.severity, d.title, d.description, d.recommendation, r.filename, r.location
         FROM defects d JOIN reports r ON d.report_id=r.id
@@ -112,6 +113,51 @@ if page == "Dashboard":
         LIMIT 20
     """).fetchall()
     conn.close()
+
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Reports Analyzed", total_reports)
+    c2.metric("Total Defects", total_defects)
+    c3.metric("Critical", critical_count)
+    c4.metric("High Risk", high_count)
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Defects by Severity")
+        if severity_data:
+            labels = [r[0] for r in severity_data]
+            values = [r[1] for r in severity_data]
+            colors_map = {"CRITICAL":"#dc3545","HIGH":"#e67e22","MEDIUM":"#f39c12","LOW":"#27ae60"}
+            bar_colors = [colors_map.get(l,"#999") for l in labels]
+            fig, ax = plt.subplots(figsize=(5,3))
+            bars = ax.bar(labels, values, color=bar_colors, edgecolor="white")
+            ax.set_ylabel("Number of defects")
+            ax.set_facecolor("#f8f9fa")
+            fig.patch.set_facecolor("#f8f9fa")
+            for bar, val in zip(bars, values):
+                ax.text(bar.get_x()+bar.get_width()/2, bar.get_height()+0.05,
+                        str(val), ha="center", va="bottom", fontweight="bold")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            st.pyplot(fig)
+            plt.close()
+
+    with col2:
+        st.subheader("Reports by Source Type")
+        if source_data:
+            labels = [r[0].replace("_"," ").title() for r in source_data]
+            values = [r[1] for r in source_data]
+            fig, ax = plt.subplots(figsize=(5,3))
+            ax.pie(values, labels=labels, autopct="%1.0f%%",
+                   colors=["#1e3c72","#4a90d9","#82b4e8"],
+                   startangle=90, textprops={"fontsize":11})
+            fig.patch.set_facecolor("#f8f9fa")
+            st.pyplot(fig)
+            plt.close()
+
+    st.divider()
     st.subheader("All Defects — sorted by severity")
     for severity, title, description, recommendation, filename, location in recent_defects:
         with st.expander(f"{title} — {filename}"):
@@ -142,6 +188,7 @@ elif page == "Analyze Report":
                 if result:
                     st.session_state["result"] = result
     with tab2:
+        st.info("Tip: paste any building inspection report text below to see the AI extract defects instantly.")
         pasted = st.text_area("Paste report text here", height=250)
         if st.button("Analyze with AI", key="btn_text") and pasted.strip():
             with st.spinner("AI is reading the report..."):
@@ -176,11 +223,12 @@ elif page == "Analyze Report":
 
 elif page == "Defect Database":
     st.title("Defect Database")
+    st.write("All defects extracted from inspected buildings, searchable and filterable.")
     col1, col2 = st.columns(2)
     with col1:
         severity_filter = st.selectbox("Filter by severity", ["ALL","CRITICAL","HIGH","MEDIUM","LOW"])
     with col2:
-        search = st.text_input("Search defects", placeholder="e.g. crack, water, fire...")
+        search = st.text_input("Search defects", placeholder="e.g. crack, water, fire, asbestos...")
     conn = get_conn()
     rows = conn.execute("""
         SELECT d.severity, d.title, d.description, d.recommendation,
@@ -190,7 +238,7 @@ elif page == "Defect Database":
     """).fetchall()
     conn.close()
     filtered = [r for r in rows if
-                (severity_filter == "ALL" or r[0] == severity_filter) and
+                (severity_filter=="ALL" or r[0]==severity_filter) and
                 (not search or search.lower() in (r[1]+r[2]).lower())]
     st.write(f"Showing {len(filtered)} defects")
     for severity, title, description, recommendation, urgency, filename, location in filtered:
@@ -207,22 +255,30 @@ elif page == "About":
     st.title("About This Product")
     st.markdown("""
 ## Building Defect Intelligence
-Built for **SECO Group** as part of the AI & Data Engineer technical assessment.
+Built for **SECO Group** as part of the AI and Data Engineer technical assessment.
 
 ### Problem
-Building inspectors process dozens of PDF reports weekly. Defects are buried in unstructured prose,
-severity is implied rather than structured, and there is no connection to similar past cases.
+Building inspectors process dozens of PDF reports weekly. Defects are buried in
+unstructured prose, severity is implied rather than structured, and there is no
+connection to similar past cases.
 
 ### Solution
-This tool automatically extracts defects from any PDF inspection report, scores severity,
-generates recommendations, and produces an executive summary — turning a 2-hour manual
-task into a 5-minute workflow.
+This tool automatically:
+- Extracts text from any PDF inspection report using PyMuPDF
+- Uses AI (GPT-4o-mini) to identify and classify every defect
+- Scores severity: Critical / High / Medium / Low
+- Generates actionable recommendations per defect
+- Produces an executive summary for non-technical stakeholders
+- Stores all findings in a searchable SQLite database
+- Finds similar past cases using ChromaDB vector search (RAG)
 
 ### Tech Stack
-- **PDF parsing**: PyMuPDF
-- **AI extraction**: OpenAI GPT-4o-mini
-- **Embeddings**: sentence-transformers (all-MiniLM-L6-v2)
-- **Vector search**: ChromaDB
-- **Database**: SQLite
-- **UI**: Streamlit
+| Component | Technology |
+|-----------|-----------|
+| PDF parsing | PyMuPDF |
+| AI extraction | OpenAI GPT-4o-mini |
+| Embeddings | sentence-transformers |
+| Vector search | ChromaDB |
+| Database | SQLite |
+| UI | Streamlit |
     """)
