@@ -97,18 +97,28 @@ Step 4 - Set your OpenAI API key:
     cp .env.example .env
     Open .env and replace sk-... with your actual OpenAI API key
 
-Step 5 - Launch the app:
+Step 5 - Run the setup script (downloads data and builds the database):
+
+    python scripts/setup_data.py
+
+    This will automatically:
+    - Download 3 real public building inspection PDFs
+    - Generate 2 synthetic Luxembourg inspection reports
+    - Run the cleaning and chunking pipeline
+    - Populate the SQLite database
+
+Step 6 - Launch the app:
 
     streamlit run app/streamlit_app.py
     Then open http://localhost:8501 in your browser
 
-Step 6 - Run tests:
+Step 7 - Run tests:
 
     pytest tests/ -v
+    Expected output: 8 passed
 
-Note: The Analyze Report page works immediately after setup.
-You can upload any PDF inspection report or paste text directly.
-The dashboard will show data after the AI pipeline has processed reports.
+Note: The Analyze Report page works immediately after Step 4.
+You can upload any PDF inspection report or paste text directly without running setup.
 
 ---
 
@@ -184,6 +194,8 @@ and ready for real data.
     building-defect-intelligence/
     ├── app/
     │   └── streamlit_app.py        UI entry point with 4 pages
+    ├── scripts/
+    │   └── setup_data.py           One-command setup: downloads data and builds DB
     ├── src/
     │   ├── ingestion/
     │   │   └── pdf_parser.py       PDF extraction and cleaning pipeline
